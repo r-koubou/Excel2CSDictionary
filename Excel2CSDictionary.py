@@ -65,7 +65,7 @@ CS_PROPERTY_TEMPLATE = """        /**
 """
 
 # Property from  dictionary convertion code
-CS_TO_DICT_TEMPLATE = "            dictionary[ \"%(name)s\" ] = %(name)s;\n"
+CS_TO_DICT_TEMPLATE = "            dictionary[ \"%(key)s\" ] = %(name)s;\n"
 
 
 """
@@ -101,6 +101,7 @@ def Main( argv ):
 
     for row in range( 1, rowLength ):
         name     = str( getCellFromColmnName( sheet, row, "Name" ).value ).strip()
+        keyName  = str( getCellFromColmnName( sheet, row, "Dictionary Key" ).value ).strip()
         dataType = str( getCellFromColmnName( sheet, row, "Type" ).value ).strip()
         desc     = getCellFromColmnName( sheet, row, "Description" ).value.strip()
         value    = getCellFromColmnName( sheet, row, "Value" ).value
@@ -125,9 +126,11 @@ def Main( argv ):
             "description":  desc,
         }
 
-        dictionaryCode += CS_TO_DICT_TEMPLATE % {
-            "name":         name
-        }
+        if( len( keyName ) > 0 ):
+            dictionaryCode += CS_TO_DICT_TEMPLATE % {
+                "name":         name,
+                "key":          keyName,
+            }
 
     if( error == True ):
         return
