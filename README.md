@@ -4,9 +4,9 @@ Generate a C# source code from xlsx file.
 
 Generated source code gives
 
-* Prooerty
-* Serializae to System.Collections.Generic.Dictionary\<K,V\> instance 
-* De-Serializae from System.Collections.Generic.Dictionary\<K,V\>
+* Property
+* Serialize to System.Collections.Generic.Dictionary\<K,V\> instance 
+* De-Serialize from System.Collections.Generic.Dictionary\<K,V\>
 
 
 ## Use situation
