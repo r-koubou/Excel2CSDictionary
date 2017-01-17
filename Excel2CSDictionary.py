@@ -9,6 +9,7 @@
 # =========================================================================
 
 import sys
+import os.path
 
 # http://pypi.python.org/pypi/xlrd
 import xlrd
@@ -45,6 +46,16 @@ namespace %(namespace)s
 %(toDictionary)s
             return dictionary;
         }
+
+        /**
+         * Convbert from Dictionary instanse
+         */
+        static public %(className)s CreateFromDictionary( Dictionary<string, object> dictionary )
+        {
+            %(className)s ret = new %(className)s();
+%(fromDictionary)s
+            return ret;
+        }
     }
 }
 """
@@ -64,9 +75,11 @@ CS_PROPERTY_TEMPLATE = """        /**
 
 """
 
-# Property from  dictionary convertion code
+# Property from dictionary convertion code
 CS_TO_DICT_TEMPLATE = "            dictionary[ \"%(key)s\" ] = %(name)s;\n"
 
+# Property from dictionary convertion code
+DICT_TO_PROPERTY_TEMPLATE = "            ret.%(name)s = dictionary[ \"%(key)s\" ];\n"
 
 """
 Get a Cell from given sheet instanse and row index and cell string value of Row 1.
@@ -84,27 +97,28 @@ def getCellFromColmnName( sheet, rowIndex, colmnName ):
     return ""
 
 """
-Main Program
+Generate from sheet
 """
-def Main( argv ):
+def Generate( sheet, nameSpace, outputDir ):
+
     error     = False
-    nameSpace = argv[ 1 ]
-    className = argv[ 2 ]
-    book      = xlrd.open_workbook( argv[ 3 ] )
-    sheet     = book.sheet_by_index( 0 )
+    className = sheet.name
 
     rowLength = sheet.nrows
 
-    initializerCode = ""
-    propertiesCode  = ""
-    dictionaryCode  = ""
+    initializerCode             = ""
+    propertiesCode              = ""
+    propertyToDictionaryCode    = ""
+    dictionaryToPropertiesCode  = ""
+
+    print( "Generating.... %s.cs" % ( className ) )
 
     for row in range( 1, rowLength ):
         name     = str( getCellFromColmnName( sheet, row, "Name" ).value ).strip()
         keyName  = str( getCellFromColmnName( sheet, row, "Dictionary Key" ).value ).strip()
         dataType = str( getCellFromColmnName( sheet, row, "Type" ).value ).strip()
         desc     = getCellFromColmnName( sheet, row, "Description" ).value.strip()
-        value    = getCellFromColmnName( sheet, row, "Value" ).value
+        value    = getCellFromColmnName( sheet, row, "Default Value" ).value
 
         if( dataType == "string" and isinstance( value, unicode ) == False ):
             error = True
@@ -127,7 +141,11 @@ def Main( argv ):
         }
 
         if( len( keyName ) > 0 ):
-            dictionaryCode += CS_TO_DICT_TEMPLATE % {
+            propertyToDictionaryCode += CS_TO_DICT_TEMPLATE % {
+                "name":         name,
+                "key":          keyName,
+            }
+            dictionaryToPropertiesCode += DICT_TO_PROPERTY_TEMPLATE % {
                 "name":         name,
                 "key":          keyName,
             }
@@ -135,13 +153,29 @@ def Main( argv ):
     if( error == True ):
         return
 
-    print( CS_BODY_TEMPLATE % {
+    fp = open( os.path.join( outputDir, className + ".cs" ), "wb" )
+    fp.write( CS_BODY_TEMPLATE % {
         "namespace":        nameSpace.encode( "utf-8" ),
         "className":        className.encode( "utf-8" ),
         "properties":       propertiesCode.encode( "utf-8" ),
         "initializer":      initializerCode.encode( "utf-8" ),
-        "toDictionary":     dictionaryCode.encode( "utf-8" ),
+        "toDictionary":     propertyToDictionaryCode.encode( "utf-8" ),
+        "fromDictionary":   dictionaryToPropertiesCode.encode( "utf-8" ),
     })
+    fp.close()
+
+
+"""
+Main Program
+"""
+def Main( argv ):
+    nameSpace   = argv[ 1 ]
+    book        = xlrd.open_workbook( argv[ 2 ] )
+    outputDir   = argv[ 3 ]
+    sheet       = book.sheet_by_index( 0 )
+
+    for s in book.sheets():
+        Generate( s, nameSpace, outputDir )
 
 if __name__ == '__main__':
     if( len( sys.argv ) >= 4 ):
@@ -150,8 +184,11 @@ if __name__ == '__main__':
         usage = [
             "",
             "usage:",
-            "python Excel2CSDictionary.py <namespace> <class name> <xlsx filename>",
-            ""
+            "    python Excel2CSDictionary.py <namespace> <xlsx filename> <output-dir>",
+            "",
+            "e.g.",
+            "    python Excel2CSDictionary.py com.example MyData.xlsx ./",
+            "",
         ]
         for i in usage :
             print( i )
